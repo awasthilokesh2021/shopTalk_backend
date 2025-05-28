@@ -13,6 +13,7 @@ const createProduct = async (req, res) => {
     });
 
     await newProduct.save();
+   
     res.status(201).json({ success: true, product: newProduct });
   } catch (error) {
     console.error("Error creating product:", error);
@@ -41,13 +42,14 @@ const getProductById = async (req, res) => {
     if (!product) return res.status(404).json({ message: "Product not found" });
 
     res.status(200).json(product);
+  
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 };
 
 
-//  Like Product
+//Like Product
 const likeProduct = async (req, res) => {
   try {
     const productId = req.params.id;
@@ -90,13 +92,13 @@ const commentProduct = async (req, res) => {
     await product.save();
 
     res.status(200).json({ message: "Comment added successfully" });
+  
   } catch (error) {
     res.status(500).json({ error: "Error commenting on product" });
   }
 };
 
 //delete comment
-// 📌 Delete a comment
 const deleteComment = async (req, res) => {
   try {
     const productId = req.params.productId;
@@ -126,12 +128,60 @@ const deleteComment = async (req, res) => {
   }
 };
 
+// add comments
+const addReplyToComment = async (req, res) => {
+  const { id: productId, commentId } = req.params;
+  const { text } = req.body;
+  const userId = req.userID;
 
+  try {
+    const product = await Product.findById(productId);
+     if (!product) return res.status(404).json({ message: "Product not found" });
+
+    const comment = product.comments.id(commentId);
+    if (!comment) return res.status(404).json({ message: "Comment not found" });
+
+    comment.replies.push({
+      user: userId,
+      text,
+    });
+
+    await product.save();
+    res.status(200).json({ success: true, replies: comment.replies });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// add likes
+const toggleReplyLike = async (req, res) => {
+  const { productId, commentId, replyId } = req.params;
+  const userId = req.userID;
+
+  const product = await Product.findById(productId);
+  const comment = product.comments.id(commentId);
+  const reply = comment.replies.id(replyId);
+
+  if (!reply) return res.status(404).json({ message: "Reply not found" });
+
+  const index = reply.likes.indexOf(userId);
+  if (index === -1) {
+    reply.likes.push(userId); // Like
+  } else {
+    reply.likes.splice(index, 1); // Unlike
+  }
+
+  await product.save();
+  res.status(200).json({ success: true, reply });
+};
+ 
 module.exports = {
   createProduct,
   getAllProducts,
   getProductById,
   likeProduct,
   commentProduct,
-  deleteComment
+  deleteComment,
+  addReplyToComment,
+  toggleReplyLike
 };
